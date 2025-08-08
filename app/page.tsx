@@ -1,103 +1,156 @@
-import Image from "next/image";
+"use client";
+
+import { useEffect, useState } from "react";
+import { useBooks } from "@/lib/BookContext";
+import { useSearchParams, useRouter } from "next/navigation";
+import SearchBar from "@/components/SearchBar";
+import BookResults from "@/components/BookResults";
+import RecentlyViewedBooks from "@/components/RecentlyViewedBooks";
+
+interface Book {
+  key: string;
+  id: string;
+  title: string;
+  author: string;
+  coverUrl?: string;
+  author_name?: string[];
+  cover_i?: number;
+}
+
+interface SearchResponse {
+  numFound: number;
+  docs: Array<Omit<Book, "id" | "author" | "coverUrl">>;
+}
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const { searchTerm, setSearchTerm, currentPage, setCurrentPage } = useBooks();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const [searchResults, setSearchResults] = useState<Book[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const booksPerPage = 6;
+  const [totalBooks, setTotalBooks] = useState(0);
+  const totalPages = Math.ceil(totalBooks / booksPerPage);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+  const handleSearch = (query: string) => {
+    setSearchTerm(query);
+    setCurrentPage(1);
+    // Update URL with search parameters
+    const params = new URLSearchParams();
+    if (query) params.set("q", query);
+    params.set("page", "1");
+    router.push(`/?${params.toString()}`);
+  };
+
+  const getCurrentPageBooks = () => {
+    return searchResults;
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    // Update URL with new page
+    const params = new URLSearchParams();
+    if (searchTerm) params.set("q", searchTerm);
+    params.set("page", page.toString());
+    router.push(`/?${params.toString()}`);
+  };
+
+  // Sync context with URL parameters on page load
+  useEffect(() => {
+    const urlQuery = searchParams.get("q");
+    const urlPage = searchParams.get("page");
+
+    if (urlQuery && urlQuery !== searchTerm) {
+      setSearchTerm(urlQuery);
+    }
+    if (urlPage) {
+      const pageNum = parseInt(urlPage);
+      if (pageNum !== currentPage) {
+        setCurrentPage(pageNum);
+      }
+    }
+  }, [searchParams, searchTerm, currentPage, setSearchTerm, setCurrentPage]);
+
+  useEffect(() => {
+    const fetchBooks = async () => {
+      if (!searchTerm) {
+        setSearchResults([]);
+        setTotalBooks(0);
+        return;
+      }
+
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const offset = (currentPage - 1) * booksPerPage;
+        const response = await fetch(
+          `https://openlibrary.org/search.json?title=${encodeURIComponent(
+            searchTerm
+          )}&limit=${booksPerPage}&offset=${offset}`
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch books");
+        }
+
+        const data: SearchResponse = await response.json();
+
+        const formattedBooks = data.docs
+          .filter((book) => book.cover_i)
+          .map((book) => ({
+            ...book,
+            id: book.key.split("/").pop() || book.key,
+            author: book.author_name?.[0] || "Unknown Author",
+            coverUrl: `https://covers.openlibrary.org/b/id/${book.cover_i}-M.jpg`,
+          }));
+
+        setSearchResults(formattedBooks);
+        setTotalBooks(data.numFound);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "An error occurred");
+        setSearchResults([]);
+        setTotalBooks(0);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchBooks();
+  }, [searchTerm, currentPage, booksPerPage]);
+
+  return (
+    <div className="min-h-screen p-8 space-y-8">
+      <div className="flex flex-col items-center space-y-8">
+        <h1 className="text-3xl font-bold">Book Search</h1>
+        <SearchBar onSearch={handleSearch} initialQuery={searchTerm} />
+
+        {error && (
+          <div className="text-red-500 bg-red-50 p-4 rounded-lg">{error}</div>
+        )}
+
+        {isLoading ? (
+          <div className="flex items-center justify-center w-full p-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          </div>
+        ) : (
+          searchResults.length > 0 && (
+            <BookResults
+              books={getCurrentPageBooks()}
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={handlePageChange}
             />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+          )
+        )}
+
+        {!isLoading && searchTerm && searchResults.length === 0 && !error && (
+          <div className="text-gray-500">No books found for "{searchTerm}"</div>
+        )}
+
+        <RecentlyViewedBooks />
+      </div>
     </div>
   );
 }
