@@ -1,3 +1,5 @@
+"use client";
+
 import { useBooks } from "@/lib/BookContext";
 import Link from "next/link";
 
