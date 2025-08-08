@@ -146,7 +146,9 @@ export default function Home() {
         )}
 
         {!isLoading && searchTerm && searchResults.length === 0 && !error && (
-          <div className="text-gray-500">No books found for "{searchTerm}"</div>
+          <div className="text-gray-500">
+            No books found for &quot;{searchTerm}&quot;
+          </div>
         )}
 
         <RecentlyViewedBooks />
