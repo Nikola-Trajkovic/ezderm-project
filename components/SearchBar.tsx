@@ -23,7 +23,6 @@ export default function SearchBar({
 
   const clearSearch = () => {
     setQuery("");
-    onSearch(""); // Clear the search results as well
   };
 
   return (
