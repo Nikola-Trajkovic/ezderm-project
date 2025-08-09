@@ -20,7 +20,7 @@ The application is deployed and available here:
 
 ## 🛠️ Tech Stack
 - **Frontend Framework:** [Next.js](https://nextjs.org/) (with TypeScript)
-- **Styling:** Any preferred CSS framework
+- **Styling:** Tailwind CSS
 - **API:** [Open Library API](https://openlibrary.org/developers/api)
 
 ## 📂 Project Structure
@@ -39,6 +39,10 @@ The application is deployed and available here:
 - Get book cover:  
   ```
   https://covers.openlibrary.org/b/id/${coverId}-L.jpg
+  ```
+- Get author details:  
+  ```
+  https://openlibrary.org/authors/${authorKey}.json
   ```
 
 ## 📦 Installation & Setup
