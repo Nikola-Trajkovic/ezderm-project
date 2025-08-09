@@ -12,8 +12,8 @@ The application is deployed and available here:
 - **Book Details Page:** View additional information such as:
   - Cover image
   - Author
-  - Publisher
-  - ISBN
+  - Published Date
+  - Author Details
   - Short description
 - **Previously Viewed Books:** Quickly revisit books you've already checked.
 - **Cover Filtering:** Only displays books that have a cover image.
@@ -25,7 +25,7 @@ The application is deployed and available here:
 
 ## 📂 Project Structure
 - **Landing Page:** Contains the search bar, search results, and previously viewed books.
-- **Book Details Page:** Displays extended information about the selected book.
+- **Book Details Page:** Displays extended information about the selected book, and previously viewed books.
 
 ## 🔌 API Endpoints Used
 - Search books by title:  
